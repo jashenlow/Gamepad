@@ -29,6 +29,10 @@
 #include <Windows.h>	//This must be included BEFORE Xinput.h!
 #include <Xinput.h>
 
+#ifdef WIN32_LEAN_AND_MEAN
+#include <mmsyscom.h>
+#endif
+
 #pragma comment (lib, "xinput.lib")
 #pragma comment (lib, "winmm.lib")
 
