@@ -26,6 +26,8 @@
 
 #include <iostream>
 #include <sstream>
+#include <unordered_map>
+#include <future>
 #include <Windows.h>	//This must be included BEFORE Xinput.h!
 #include <Xinput.h>
 
@@ -245,11 +247,17 @@ namespace GpDef
 	};
 }
 
+typedef void(*GpConnectCallback)(void* usr, GpDef::DeviceID gamepadID);
+
 class Gamepad
 {
 public:
 	Gamepad() {}
-	~Gamepad() {}
+	~Gamepad() 
+	{
+		connectedCallbacks.clear();
+		disconnectedCallbacks.clear();
+	}
 	
 	const char* GetClassStr() { return "Gamepad"; }
 
@@ -282,6 +290,8 @@ public:
 					snprintf(gamepads[i].ProductName, sizeof(gamepads[i].ProductName), "%s", devInfo.szPname);
 					
 					numConnected++;
+
+					CallConnectedCallbacks(connectedCallbacks, (GpDef::DeviceID)gamepads[i].ID);
 				}
 			}
 		}
@@ -365,6 +375,8 @@ public:
 					snprintf(gamepads[i].ProductName, sizeof(gamepads[i].ProductName), "%s", devInfo.szPname);
 
 					numConnected++;
+
+					CallConnectedCallbacks(connectedCallbacks, (GpDef::DeviceID)gamepads[i].ID);
 				}
 
 				UpdateAnalogInputs((GpDef::DeviceID)i);
@@ -374,10 +386,13 @@ public:
 			{
 				if (gamepads[i].ID > GPID_DISCONNECTED)
 				{
+					GpDef::DeviceID disconnectedID = (GpDef::DeviceID)gamepads[i].ID;
 					gamepads[i].Reset();
 
 					if (numConnected > 0)
 						numConnected--;
+
+					CallConnectedCallbacks(disconnectedCallbacks, disconnectedID);
 				}
 			}
 		}
@@ -399,33 +414,62 @@ public:
 	}
 
 	/*
-	* Description	 :	Returns a boolean value indicating if the specified controller has just been connected.
-	* Return		 :  true = connected(current frame), false = not connected(current frame).
+	* Description	 :	If set to true, all registered callbacks will be called asynchronously.
+	* Return		 :
 	*/
-	bool IsJustConnected(const GpDef::DeviceID& index)
+	void SetAsyncCallbacks(bool isAsync)
 	{
-		if (index >= XUSER_MAX_COUNT)
-		{
-			std::cerr << "Invalid input for argument \"index\". (See definition for GpDef::DeviceID)" << std::endl;
-			return false;
-		}
+		asyncCallbacks = isAsync;
+	}
 
-		return (gamepads[index].ID > GPID_DISCONNECTED && gamepads[index].PrevID == GPID_DISCONNECTED);
+	/*
+	* Description	 :	Maps a user-defined function to be called when a controller is connected.
+	* Return		 :  
+	*/
+	void AddGamepadConnectedCallback(GpConnectCallback fcn, void* usr)
+	{
+		if (fcn == nullptr)
+			std::cerr << __FUNCTION__ << ": " << "Invalid input for argument fcn" << std::endl;
+
+		connectedCallbacks[fcn] = usr;
 	}
 	
 	/*
-	* Description	 :	Returns a boolean value indicating if the specified controller has just been disconnected.
-	* Return		 :  true = disconnected(current frame), false = not disconnected(current frame).
+	* Description	 :	Removes mapping of a user-defined function to be called when a controller is connected.
+	* Return		 :  
 	*/
-	bool IsJustDisconnected(const GpDef::DeviceID& index)
+	void RemoveGamepadConnectedCallback(GpConnectCallback fcn)
 	{
-		if (index >= XUSER_MAX_COUNT)
-		{
-			std::cerr << "Invalid input for argument \"index\". (See definition for GpDef::DeviceID)" << std::endl;
-			return false;
-		}
+		if (fcn == nullptr)
+			std::cerr << __FUNCTION__ << ": " << "Invalid input for argument fcn" << std::endl;
 
-		return (gamepads[index].ID == GPID_DISCONNECTED && gamepads[index].PrevID > GPID_DISCONNECTED);
+		connectedCallbacks.erase(fcn);
+	}
+
+	/*
+	* Description	 :	Maps a user-defined function to be called when a controller is disconnected.
+	* Return		 :
+	*/
+	void AddGamepadDisconnectedCallback(GpConnectCallback fcn, void* usr)
+	{
+		if (fcn == nullptr)
+			std::cerr << __FUNCTION__ << ':' << "Invalid input for argument fcn" << std::endl;
+		if (usr == nullptr)
+			std::cerr << __FUNCTION__ << ':' << "Invalid input for argument usr" << std::endl;
+
+		disconnectedCallbacks[fcn] = usr;
+	}
+
+	/*
+	* Description	 :	Removes mapping of a user-defined function to be called when a controller is disconnected.
+	* Return		 :
+	*/
+	void RemoveGamepadDisconnectedCallback(GpConnectCallback fcn)
+	{
+		if (fcn == nullptr)
+			std::cerr << __FUNCTION__ << ':' << "Invalid input for argument fcn" << std::endl;
+
+		disconnectedCallbacks.erase(fcn);
 	}
 
 	/*
@@ -574,7 +618,10 @@ private:
 	GpDef::GamepadState gamepads[XUSER_MAX_COUNT];
 	GpDef::ControlsStruct dummyControls;	//For error handling
 	uint8_t numConnected = 0;
-	
+	std::unordered_map<GpConnectCallback, void*> connectedCallbacks;
+	std::unordered_map<GpConnectCallback, void*> disconnectedCallbacks;
+	bool asyncCallbacks = false;
+
 	inline void UpdateDigitalInputs(const GpDef::DeviceID& index)
 	{
 		if (index >= XUSER_MAX_COUNT)
@@ -645,6 +692,19 @@ private:
 	{
 		value = (value < minVal) ? minVal : value;
 		value = (value > maxVal) ? maxVal : value;
+	}
+
+	inline void CallConnectedCallbacks(const std::unordered_map<GpConnectCallback, void*>& cbMap, const GpDef::DeviceID& gamepadID)
+	{
+		for (auto& it : cbMap)
+		{
+			GpConnectCallback fcn = it.first;
+			
+			if (asyncCallbacks)
+				std::future<void> fut = std::async(std::launch::async, fcn, it.second, gamepadID);
+			else	
+				fcn(it.second, gamepadID);
+		}
 	}
 };
 
