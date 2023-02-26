@@ -429,7 +429,10 @@ public:
 	void AddGamepadConnectedCallback(GpConnectCallback fcn, void* usr)
 	{
 		if (fcn == nullptr)
+		{
 			std::cerr << __FUNCTION__ << ": " << "Invalid input for argument fcn" << std::endl;
+			return;
+		}
 
 		connectedCallbacks[fcn] = usr;
 	}
@@ -441,7 +444,10 @@ public:
 	void RemoveGamepadConnectedCallback(GpConnectCallback fcn)
 	{
 		if (fcn == nullptr)
+		{
 			std::cerr << __FUNCTION__ << ": " << "Invalid input for argument fcn" << std::endl;
+			return;
+		}
 
 		connectedCallbacks.erase(fcn);
 	}
@@ -453,7 +459,10 @@ public:
 	void AddGamepadDisconnectedCallback(GpConnectCallback fcn, void* usr)
 	{
 		if (fcn == nullptr)
-			std::cerr << __FUNCTION__ << ':' << "Invalid input for argument fcn" << std::endl;
+		{
+			std::cerr << __FUNCTION__ << ": " << "Invalid input for argument fcn" << std::endl;
+			return;
+		}
 
 		disconnectedCallbacks[fcn] = usr;
 	}
@@ -465,7 +474,10 @@ public:
 	void RemoveGamepadDisconnectedCallback(GpConnectCallback fcn)
 	{
 		if (fcn == nullptr)
-			std::cerr << __FUNCTION__ << ':' << "Invalid input for argument fcn" << std::endl;
+		{
+			std::cerr << __FUNCTION__ << ": " << "Invalid input for argument fcn" << std::endl;
+			return;
+		}
 
 		disconnectedCallbacks.erase(fcn);
 	}
