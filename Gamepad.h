@@ -454,8 +454,6 @@ public:
 	{
 		if (fcn == nullptr)
 			std::cerr << __FUNCTION__ << ':' << "Invalid input for argument fcn" << std::endl;
-		if (usr == nullptr)
-			std::cerr << __FUNCTION__ << ':' << "Invalid input for argument usr" << std::endl;
 
 		disconnectedCallbacks[fcn] = usr;
 	}
