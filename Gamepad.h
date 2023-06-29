@@ -287,7 +287,9 @@ public:
 					//Get Gamepad Device Name
 					res = joyGetDevCapsA(i, &devInfo, sizeof(devInfo));
 					memset(gamepads[i].ProductName, '\0', MAXPNAMELEN);
-					snprintf(gamepads[i].ProductName, sizeof(gamepads[i].ProductName), "%s", devInfo.szPname);
+
+					size_t len = ((strlen(devInfo.szPname) + 1) < MAXPNAMELEN) ? strlen(devInfo.szPname) + 1 : MAXPNAMELEN;
+					memcpy(gamepads[i].ProductName, devInfo.szPname, len);
 					
 					numConnected++;
 
@@ -372,7 +374,9 @@ public:
 					//Get Gamepad Device Name
 					MMRESULT res = joyGetDevCapsA(i, &devInfo, sizeof(devInfo));
 					memset(gamepads[i].ProductName, '\0', MAXPNAMELEN);
-					snprintf(gamepads[i].ProductName, sizeof(gamepads[i].ProductName), "%s", devInfo.szPname);
+
+					size_t len = ((strlen(devInfo.szPname) + 1) < MAXPNAMELEN) ? strlen(devInfo.szPname) + 1 : MAXPNAMELEN;
+					memcpy(gamepads[i].ProductName, devInfo.szPname, len);
 
 					numConnected++;
 
